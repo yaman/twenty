@@ -14,18 +14,18 @@ WHERE schemaname = 'core'
 ORDER BY indexname;
 
 \echo '=== 3. Workspace Schema Discovery ==='
-SELECT "dataSourceMetadata"->'schema' as schema_name
-FROM core."dataSourceMetadata"
-WHERE "type" = 'workspace';
+SELECT "databaseSchema" as schema_name
+FROM core."workspace"
+WHERE "databaseSchema" IS NOT NULL;
 
 \echo '=== 4. Workspace Index Verification (first workspace) ==='
 DO $$
 DECLARE
   ws_schema text;
 BEGIN
-  SELECT "dataSourceMetadata"->'schema' INTO ws_schema
-  FROM core."dataSourceMetadata"
-  WHERE "type" = 'workspace'
+  SELECT "databaseSchema" INTO ws_schema
+  FROM core."workspace"
+  WHERE "databaseSchema" IS NOT NULL
   LIMIT 1;
 
   IF ws_schema IS NULL THEN
@@ -33,7 +33,7 @@ BEGIN
     RETURN;
   END IF;
 
-  ws_schema := trim(both '"' from ws_schema);
+  -- databaseSchema is plain varchar, no trimming needed
 
   RAISE NOTICE 'Checking workspace schema: %', ws_schema;
 
@@ -62,13 +62,13 @@ DECLARE
   ws_schema text;
   opts text[];
 BEGIN
-  SELECT "dataSourceMetadata"->'schema' INTO ws_schema
-  FROM core."dataSourceMetadata"
-  WHERE "type" = 'workspace'
+  SELECT "databaseSchema" INTO ws_schema
+  FROM core."workspace"
+  WHERE "databaseSchema" IS NOT NULL
   LIMIT 1;
 
   IF ws_schema IS NULL THEN RETURN; END IF;
-  ws_schema := trim(both '"' from ws_schema);
+  -- databaseSchema is plain varchar, no trimming needed
 
   SELECT reloptions INTO opts FROM pg_class
   WHERE relname = 'workflowRun' AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = ws_schema);
@@ -86,13 +86,13 @@ DECLARE
   ws_schema text;
   opts text[];
 BEGIN
-  SELECT "dataSourceMetadata"->'schema' INTO ws_schema
-  FROM core."dataSourceMetadata"
-  WHERE "type" = 'workspace'
+  SELECT "databaseSchema" INTO ws_schema
+  FROM core."workspace"
+  WHERE "databaseSchema" IS NOT NULL
   LIMIT 1;
 
   IF ws_schema IS NULL THEN RETURN; END IF;
-  ws_schema := trim(both '"' from ws_schema);
+  -- databaseSchema is plain varchar, no trimming needed
 
   SELECT reloptions INTO opts FROM pg_class
   WHERE relname = 'message' AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = ws_schema);

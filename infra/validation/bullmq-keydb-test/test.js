@@ -5,7 +5,7 @@
 //   REDIS_URL=redis://localhost:6379 node test.js
 //   REDIS_URL=redis://twenty-keydb:6379 node test.js
 
-const { Queue, Worker, QueueScheduler } = require('bullmq');
+const { Queue, Worker } = require('bullmq');
 const Redis = require('ioredis');
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';

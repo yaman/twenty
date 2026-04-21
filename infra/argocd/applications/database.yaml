@@ -11,6 +11,8 @@ spec:
     repoURL: https://github.com/<org>/twenty.git
     targetRevision: main
     path: infra/database
+    directory:
+      include: "{cluster.yaml,pooler-*.yaml,monitoring-queries.yaml,scheduled-backup.yaml,objectstore-prod.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: twenty

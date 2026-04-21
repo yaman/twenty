@@ -10,7 +10,7 @@ data:
 
     echo "=== Materialized View Refresh ==="
 
-    SCHEMAS=$(psql -Atc "SELECT \"dataSourceMetadata\"->'schema' FROM core.\"dataSourceMetadata\" WHERE \"type\" = 'workspace'" | tr -d '"' | grep -v '^$')
+    SCHEMAS=$(psql -Atc "SELECT \"databaseSchema\" FROM core.\"workspace\" WHERE \"databaseSchema\" IS NOT NULL" | grep -v '^$')
 
     for SCHEMA in $SCHEMAS; do
       echo "--- Refreshing MVs for $SCHEMA ---"

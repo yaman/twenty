@@ -29,7 +29,7 @@ spec:
                 topologyKey: kubernetes.io/hostname
       initContainers:
         - name: init-config
-          image: busybox:1.37
+          image: busybox:1.36
           command:
             - sh
             - -c
@@ -47,7 +47,7 @@ spec:
               mountPath: /data
       containers:
         - name: keydb
-          image: eqalpha/keydb:latest
+          image: eqalpha/keydb:6.3.4
           command:
             - keydb-server
             - /data/keydb.conf
@@ -86,7 +86,7 @@ spec:
             - name: config
               mountPath: /config
         - name: redis-exporter
-          image: oliver006/redis_exporter:latest
+          image: oliver006/redis_exporter:v1.67.0
           ports:
             - name: metrics
               containerPort: 9121

@@ -19,7 +19,7 @@ spec:
             description: "Replication lag is {{ $value }}s. Check network and replica health."
 
         - alert: PgBouncerPoolUtilizationHigh
-          expr: cnpg_pgbouncer_pools_server_active / cnpg_pgbouncer_pools_server_idle_timeout > 0.8
+          expr: cnpg_pgbouncer_pools_server_active / (cnpg_pgbouncer_pools_server_active + cnpg_pgbouncer_pools_server_idle + 0.001) > 0.8
           for: 5m
           labels:
             severity: warning
