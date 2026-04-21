@@ -1,0 +1,37 @@
+# MinIO standalone for local development
+# Chart: minio/minio
+# Repo: https://charts.min.io/
+#
+# Install:
+#   helm repo add minio https://charts.min.io/
+#   helm install minio minio/minio -n minio --create-namespace -f infra/minio/values-local.yaml --wait
+
+mode: standalone
+
+replicas: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+persistence:
+  enabled: true
+  size: 10Gi
+
+rootUser: minioadmin
+rootPassword: minioadmin123
+
+buckets:
+  - name: twenty-backups
+    policy: none
+    purge: false
+  - name: twenty-files
+    policy: none
+    purge: false
+
+consoleIngress:
+  enabled: false
