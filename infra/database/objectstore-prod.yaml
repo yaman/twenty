@@ -1,0 +1,10 @@
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: twenty-backup-store
+  namespace: twenty
+spec:
+  configuration:
+    destinationPath: "gs://twenty-backups/prod"
+    googleCredentials:
+      gkeEnvironment: true
