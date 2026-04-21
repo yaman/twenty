@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: twenty-sql-optimizations
+  namespace: twenty
+data:
+  core-optimizations.sql: |
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_app_token_user_id
+      ON core."appToken" ("userId");
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_app_token_workspace_id
+      ON core."appToken" ("workspaceId");
+    ALTER TABLE core."appToken" SET (
+      autovacuum_vacuum_scale_factor = 0.02,
+      autovacuum_analyze_scale_factor = 0.01
+    );
+  workspace-optimizations.sql: |
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_message_created_brin
+      ON __SCHEMA__."message" USING BRIN ("createdAt") WITH (pages_per_range = 128);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_workflow_run_created_brin
+      ON __SCHEMA__."workflowRun" USING BRIN ("createdAt") WITH (pages_per_range = 128);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_timeline_activity_created_brin
+      ON __SCHEMA__."timelineActivity" USING BRIN ("createdAt") WITH (pages_per_range = 128);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_calendar_event_created_brin
+      ON __SCHEMA__."calendarEvent" USING BRIN ("createdAt") WITH (pages_per_range = 128);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_company_search_trgm
+      ON __SCHEMA__."company" USING GIN (("searchVector"::text) gin_trgm_ops);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_person_search_trgm
+      ON __SCHEMA__."person" USING GIN (("searchVector"::text) gin_trgm_ops);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_company_name_unaccent
+      ON __SCHEMA__."company" USING btree (public.unaccent_immutable(name));
+    ALTER TABLE __SCHEMA__."workflowRun" SET (fillfactor = 70);
+    ALTER TABLE __SCHEMA__."messageChannel" SET (fillfactor = 75);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_workflow_run_state_gin
+      ON __SCHEMA__."workflowRun" USING GIN (state jsonb_path_ops);
+    ALTER TABLE __SCHEMA__."message" SET (
+      autovacuum_vacuum_scale_factor = 0.01,
+      autovacuum_analyze_scale_factor = 0.005
+    );
+    ALTER TABLE __SCHEMA__."workflowRun" SET (
+      autovacuum_vacuum_scale_factor = 0.02,
+      autovacuum_analyze_scale_factor = 0.01
+    );
+  run.sh: |
+    #!/bin/bash
+    set -e
+
+    echo "=== Twenty SQL Optimization Job ==="
+    echo "Connecting to: $PGHOST:$PGPORT/$PGDATABASE"
+
+    echo "--- Running core optimizations ---"
+    psql -f /sql/core-optimizations.sql 2>&1 || echo "WARN: Some core optimizations may have failed (non-fatal)"
+
+    echo "--- Discovering workspace schemas ---"
+    SCHEMAS=$(psql -Atc "SELECT \"dataSourceMetadata\"->'schema' FROM core.\"dataSourceMetadata\" WHERE \"type\" = 'workspace'" | tr -d '"' | grep -v '^$')
+
+    if [ -z "$SCHEMAS" ]; then
+      echo "No workspace schemas found. Skipping workspace optimizations."
+      exit 0
+    fi
+
+    echo "Found workspace schemas: $SCHEMAS"
+
+    for SCHEMA in $SCHEMAS; do
+      echo "--- Optimizing workspace: $SCHEMA ---"
+      sed "s/__SCHEMA__/$SCHEMA/g" /sql/workspace-optimizations.sql | psql 2>&1 || echo "WARN: Some optimizations failed for $SCHEMA (non-fatal)"
+    done
+
+    echo "=== Optimization Job Complete ==="
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: twenty-sql-optimizations
+  namespace: twenty
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: optimize
+          image: postgres:17-alpine
+          command: ["bash", "/sql/run.sh"]
+          env:
+            - name: PGHOST
+              value: twenty-db-rw
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              value: twenty
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: twenty-db-superuser
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: twenty-db-superuser
+                  key: password
+          volumeMounts:
+            - name: sql
+              mountPath: /sql
+      volumes:
+        - name: sql
+          configMap:
+            name: twenty-sql-optimizations
+            defaultMode: 0755
