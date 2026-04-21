@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: twenty-keydb
+  namespace: twenty
+  labels:
+    app.kubernetes.io/name: twenty-keydb
+    app.kubernetes.io/component: cache
+spec:
+  type: ClusterIP
+  ports:
+    - name: keydb
+      port: 6379
+      targetPort: keydb
+      protocol: TCP
+    - name: metrics
+      port: 9121
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: twenty-keydb

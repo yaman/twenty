@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: twenty-keydb-headless
+  namespace: twenty
+  labels:
+    app.kubernetes.io/name: twenty-keydb
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: keydb
+      port: 6379
+      targetPort: keydb
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: twenty-keydb

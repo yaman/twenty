@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: twenty-keydb
+  namespace: twenty
+  labels:
+    app.kubernetes.io/name: twenty-keydb
+    app.kubernetes.io/component: cache
+spec:
+  serviceName: twenty-keydb-headless
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: twenty-keydb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: twenty-keydb
+        app.kubernetes.io/component: cache
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: twenty-keydb
+                topologyKey: kubernetes.io/hostname
+      initContainers:
+        - name: init-config
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              cp /config/keydb.conf /data/keydb.conf
+              HOSTNAME=$(hostname)
+              ORDINAL=${HOSTNAME##*-}
+              if [ "$ORDINAL" != "0" ]; then
+                echo "replicaof twenty-keydb-0.twenty-keydb-headless 6379" >> /data/keydb.conf
+              fi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+      containers:
+        - name: keydb
+          image: eqalpha/keydb:latest
+          command:
+            - keydb-server
+            - /data/keydb.conf
+          ports:
+            - name: keydb
+              containerPort: 6379
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+                - keydb-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - keydb-cli
+                - ping
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /config
+        - name: redis-exporter
+          image: oliver006/redis_exporter:latest
+          ports:
+            - name: metrics
+              containerPort: 9121
+              protocol: TCP
+          env:
+            - name: REDIS_ADDR
+              value: "redis://localhost:6379"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      volumes:
+        - name: config
+          configMap:
+            name: twenty-keydb-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
