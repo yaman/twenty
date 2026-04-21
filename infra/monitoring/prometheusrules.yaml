@@ -1,0 +1,74 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: twenty-alerts
+  namespace: twenty
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: twenty.database
+      rules:
+        - alert: PostgreSQLReplicationLagHigh
+          expr: cnpg_pg_replication_lag > 30
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PG replication lag > 30s on {{ $labels.pod }}"
+            description: "Replication lag is {{ $value }}s. Check network and replica health."
+
+        - alert: PgBouncerPoolUtilizationHigh
+          expr: cnpg_pgbouncer_pools_server_active / cnpg_pgbouncer_pools_server_idle_timeout > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PgBouncer pool > 80% utilized on {{ $labels.pod }}"
+
+    - name: twenty.keydb
+      rules:
+        - alert: KeyDBMemoryHigh
+          expr: redis_memory_used_bytes{job="twenty-keydb"} / redis_memory_max_bytes{job="twenty-keydb"} > 0.9
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "KeyDB memory > 90% on {{ $labels.pod }}"
+            description: "Memory usage is {{ $value | humanizePercentage }}. Check for memory leaks or increase limits."
+
+    - name: twenty.application
+      rules:
+        - alert: QueueDepthHigh
+          expr: sum(twenty_queue_jobs_waiting_total) > 1000
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Queue depth > 1000 for 5 minutes"
+            description: "{{ $value }} jobs waiting. Workers may be overwhelmed."
+
+        - alert: PodRestartsTooFrequent
+          expr: increase(kube_pod_container_status_restarts_total{namespace="twenty"}[10m]) > 3
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.pod }} restarted > 3 times in 10 minutes"
+
+        - alert: NoHealthyServerPods
+          expr: count(up{job="twenty-server"} == 1) == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Zero healthy Twenty server pods"
+            description: "All server pods are down. Immediate attention required."
+
+        - alert: GraphQLErrorRateHigh
+          expr: sum(rate(graphql_operation_500_total[5m])) / (sum(rate(graphql_operation_200_total[5m])) + sum(rate(graphql_operation_400_total[5m])) + sum(rate(graphql_operation_500_total[5m])) + 0.001) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "GraphQL 500 error rate > 5%"
