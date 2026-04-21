@@ -1,0 +1,41 @@
+# YugabyteDB test deployment for compatibility validation
+# Chart: yugabytedb/yugabyte
+# Repo: https://charts.yugabyte.com
+#
+# Install in test namespace:
+#   helm repo add yugabytedb https://charts.yugabyte.com
+#   helm install yugabyte yugabytedb/yugabyte -n twenty-db-test --create-namespace -f infra/distributed-db/yugabytedb/values.yaml --wait
+
+replicas:
+  master: 1
+  tserver: 3
+
+resource:
+  master:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  tserver:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+storage:
+  master:
+    size: 5Gi
+  tserver:
+    size: 20Gi
+
+gflags:
+  tserver:
+    ysql_enable_auth: true
+    ysql_pg_conf_csv: "log_min_duration_statement=500"
+  master: {}
+
+enableLoadBalancer: false

@@ -1,0 +1,63 @@
+# Neon test deployment for compatibility validation
+# Neon runs as a Docker container locally (no Helm chart — use docker-compose or K8s manifests)
+#
+# Option A: Use Neon's official Docker image
+#   docker run -d --name neon-test \
+#     -p 5434:5432 \
+#     -e NEON_AUTH_TOKEN=test \
+#     ghcr.io/neondatabase/neon:latest
+#
+# Option B: Use Neon cloud free tier for testing
+#   Create project at https://neon.tech and use connection string
+#
+# Then point Twenty at it:
+#   PG_DATABASE_URL=postgres://twenty:<pwd>@<neon-host>:5432/twenty
+
+# If using K8s deployment for local testing:
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: neon-test
+  namespace: twenty-db-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neon-test
+  template:
+    metadata:
+      labels:
+        app: neon-test
+    spec:
+      containers:
+        - name: postgres
+          image: ghcr.io/neondatabase/compute-node-v17:latest
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: twenty
+            - name: POSTGRES_PASSWORD
+              value: twenty-test
+            - name: POSTGRES_DB
+              value: twenty
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: neon-test
+  namespace: twenty-db-test
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: neon-test
