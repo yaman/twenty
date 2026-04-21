@@ -1,0 +1,135 @@
+# Twenty Helm chart values for production (GKE)
+# Uses external CloudNativePG + KeyDB + GCS
+
+fullnameOverride: twenty
+
+image:
+  repository: twentycrm/twenty
+  tag: ""
+  pullPolicy: IfNotPresent
+
+db:
+  enabled: false
+  external:
+    host: twenty-db-pooler-rw
+    port: 5432
+    user: twenty
+    database: twenty
+    secretName: twenty-db-app
+    passwordKey: password
+
+redisInternal:
+  enabled: false
+redis:
+  external:
+    host: twenty-keydb
+    port: 6379
+
+server:
+  enabled: true
+  replicaCount: 2
+
+  persistence:
+    enabled: false
+  dockerDataPersistence:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+  env:
+    SIGN_IN_PREFILLED: "false"
+
+  extraEnv:
+    - name: PG_DATABASE_REPLICA_URL
+      value: "postgres://twenty:$(DB_PASSWORD)@twenty-db-pooler-ro:5432/twenty"
+    - name: METER_DRIVER
+      value: prometheus
+    - name: STORAGE_TYPE
+      value: "S_3"
+    - name: STORAGE_S3_ENDPOINT
+      value: "storage.googleapis.com"
+    - name: STORAGE_S3_REGION
+      valueFrom:
+        configMapKeyRef:
+          name: twenty-config
+          key: GCS_REGION
+    - name: STORAGE_S3_NAME
+      valueFrom:
+        configMapKeyRef:
+          name: twenty-config
+          key: GCS_BUCKET
+    - name: STORAGE_S3_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef:
+          name: twenty-gcs-hmac
+          key: accessKeyId
+    - name: STORAGE_S3_SECRET_ACCESS_KEY
+      valueFrom:
+        secretKeyRef:
+          name: twenty-gcs-hmac
+          key: secretAccessKey
+
+  ingress:
+    enabled: true
+    className: nginx
+    acme: true
+    hosts:
+      - host: crm.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: twenty-tls
+        hosts:
+          - crm.example.com
+
+worker:
+  enabled: true
+  replicaCount: 2
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+  extraEnv:
+    - name: PG_DATABASE_REPLICA_URL
+      value: "postgres://twenty:$(DB_PASSWORD)@twenty-db-pooler-ro:5432/twenty"
+    - name: METER_DRIVER
+      value: prometheus
+    - name: STORAGE_TYPE
+      value: "S_3"
+    - name: STORAGE_S3_ENDPOINT
+      value: "storage.googleapis.com"
+    - name: STORAGE_S3_REGION
+      valueFrom:
+        configMapKeyRef:
+          name: twenty-config
+          key: GCS_REGION
+    - name: STORAGE_S3_NAME
+      valueFrom:
+        configMapKeyRef:
+          name: twenty-config
+          key: GCS_BUCKET
+    - name: STORAGE_S3_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef:
+          name: twenty-gcs-hmac
+          key: accessKeyId
+    - name: STORAGE_S3_SECRET_ACCESS_KEY
+      valueFrom:
+        secretKeyRef:
+          name: twenty-gcs-hmac
+          key: secretAccessKey
+
+storage:
+  type: local
