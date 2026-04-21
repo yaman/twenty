@@ -1,0 +1,22 @@
+# CloudNativePG operator Helm values
+# Chart: cnpg/cloudnative-pg
+# Repo: https://cloudnative-pg.github.io/charts
+#
+# Install:
+#   helm repo add cnpg https://cloudnative-pg.github.io/charts
+#   helm install cnpg-operator cnpg/cloudnative-pg -n cnpg-system --create-namespace -f infra/operators/cnpg-values.yaml --wait
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+monitoring:
+  podMonitorEnabled: false
+  grafanaDashboard:
+    create: false
