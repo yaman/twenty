@@ -1,0 +1,13 @@
+{
+  "name": "bullmq-keydb-validation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Validates BullMQ compatibility with KeyDB",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.0.0"
+  }
+}
