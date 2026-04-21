@@ -1,0 +1,38 @@
+# Only include this Application in local/dev environments
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: twenty-minio
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://charts.min.io/
+    chart: minio
+    targetRevision: "*"
+    helm:
+      valueFiles: []
+      valuesObject:
+        mode: standalone
+        replicas: 1
+        persistence:
+          enabled: true
+          size: 10Gi
+        rootUser: minioadmin
+        rootPassword: minioadmin123
+        buckets:
+          - name: twenty-backups
+            policy: none
+          - name: twenty-files
+            policy: none
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: minio
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: twenty
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/<org>/twenty.git
+    targetRevision: main
+    path: packages/twenty-docker/helm/twenty
+    helm:
+      valueFiles:
+        - ../../../../infra/twenty/values-prod.yaml  # Change to values-local.yaml for dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: twenty
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
