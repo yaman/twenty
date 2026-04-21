@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-keydb-health
+  namespace: twenty
+  labels:
+    grafana_dashboard: "1"
+data:
+  keydb-health.json: |
+    {
+      "title": "KeyDB Health",
+      "uid": "twenty-keydb-health",
+      "tags": ["twenty", "keydb"],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "templating": {
+        "list": [
+          {"name": "datasource", "type": "datasource", "query": "prometheus", "current": {"text": "Prometheus", "value": "Prometheus"}}
+        ]
+      },
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Memory Usage",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {"expr": "redis_memory_used_bytes{job=\"twenty-keydb\"}", "legendFormat": "{{pod}} used", "refId": "A"},
+            {"expr": "redis_memory_max_bytes{job=\"twenty-keydb\"}", "legendFormat": "{{pod}} max", "refId": "B"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "bytes"}}
+        },
+        {
+          "type": "timeseries",
+          "title": "Operations per Second",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {"expr": "rate(redis_commands_processed_total{job=\"twenty-keydb\"}[5m])", "legendFormat": "{{pod}}", "refId": "A"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "ops"}}
+        },
+        {
+          "type": "timeseries",
+          "title": "Connected Clients",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {"expr": "redis_connected_clients{job=\"twenty-keydb\"}", "legendFormat": "{{pod}}", "refId": "A"}
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Cache Hit Rate",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {"expr": "rate(redis_keyspace_hits_total{job=\"twenty-keydb\"}[5m]) / (rate(redis_keyspace_hits_total{job=\"twenty-keydb\"}[5m]) + rate(redis_keyspace_misses_total{job=\"twenty-keydb\"}[5m]) + 0.001)", "legendFormat": "{{pod}}", "refId": "A"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "percentunit"}}
+        }
+      ]
+    }

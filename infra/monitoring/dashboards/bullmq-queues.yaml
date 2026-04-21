@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-bullmq-queues
+  namespace: twenty
+  labels:
+    grafana_dashboard: "1"
+data:
+  bullmq-queues.json: |
+    {
+      "title": "BullMQ Queues",
+      "uid": "twenty-bullmq-queues",
+      "tags": ["twenty", "bullmq"],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "templating": {
+        "list": [
+          {"name": "datasource", "type": "datasource", "query": "prometheus", "current": {"text": "Prometheus", "value": "Prometheus"}},
+          {"name": "queue", "type": "query", "query": "label_values(job_completed_total, queue)", "datasource": {"type": "prometheus", "uid": "${datasource}"}, "multi": true, "includeAll": true}
+        ]
+      },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Total Queue Depth",
+          "gridPos": {"h": 4, "w": 8, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [{"expr": "sum(twenty_queue_jobs_waiting_total)", "refId": "A"}],
+          "fieldConfig": {"defaults": {"thresholds": {"steps": [{"value": 0, "color": "green"}, {"value": 500, "color": "yellow"}, {"value": 1000, "color": "red"}]}}}
+        },
+        {
+          "type": "stat",
+          "title": "Jobs Completed/min",
+          "gridPos": {"h": 4, "w": 8, "x": 8, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [{"expr": "sum(rate(job_completed_total[5m])) * 60", "refId": "A"}]
+        },
+        {
+          "type": "stat",
+          "title": "Jobs Failed/min",
+          "gridPos": {"h": 4, "w": 8, "x": 16, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [{"expr": "sum(rate(job_failed_total[5m])) * 60", "refId": "A"}],
+          "fieldConfig": {"defaults": {"thresholds": {"steps": [{"value": 0, "color": "green"}, {"value": 1, "color": "yellow"}, {"value": 10, "color": "red"}]}}}
+        },
+        {
+          "type": "timeseries",
+          "title": "Jobs Completed by Queue",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {"expr": "sum by (queue) (rate(job_completed_total{queue=~\"$queue\"}[5m]))", "legendFormat": "{{queue}}", "refId": "A"}
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Jobs Failed by Queue",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {"expr": "sum by (queue) (rate(job_failed_total{queue=~\"$queue\"}[5m]))", "legendFormat": "{{queue}}", "refId": "A"}
+          ]
+        }
+      ]
+    }

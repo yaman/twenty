@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-workflow-sync
+  namespace: twenty
+  labels:
+    grafana_dashboard: "1"
+data:
+  workflow-sync.json: |
+    {
+      "title": "Workflow & Sync",
+      "uid": "twenty-workflow-sync",
+      "tags": ["twenty", "workflow"],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "templating": {
+        "list": [
+          {"name": "datasource", "type": "datasource", "query": "prometheus", "current": {"text": "Prometheus", "value": "Prometheus"}}
+        ]
+      },
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Workflow Run Rate",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {"expr": "sum(rate(workflow_run_completed_total[5m]))", "legendFormat": "Completed", "refId": "A"},
+            {"expr": "sum(rate(workflow_run_failed_total[5m]))", "legendFormat": "Failed", "refId": "B"},
+            {"expr": "sum(rate(workflow_run_stopped_total[5m]))", "legendFormat": "Stopped", "refId": "C"},
+            {"expr": "sum(rate(workflow_run_throttled_total[5m]))", "legendFormat": "Throttled", "refId": "D"}
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Workflow Starts by Trigger",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {"expr": "rate(workflow_run_started_database_event_total[5m])", "legendFormat": "Database Event", "refId": "A"},
+            {"expr": "rate(workflow_run_started_cron_total[5m])", "legendFormat": "Cron", "refId": "B"},
+            {"expr": "rate(workflow_run_started_webhook_total[5m])", "legendFormat": "Webhook", "refId": "C"},
+            {"expr": "rate(workflow_run_started_manual_total[5m])", "legendFormat": "Manual", "refId": "D"}
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Message Sync Activity",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {"expr": "rate(message_channel_sync_job_active_total[5m])", "legendFormat": "Active", "refId": "A"},
+            {"expr": "rate(message_channel_sync_job_failed_unknown_total[5m])", "legendFormat": "Failed", "refId": "B"}
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Calendar Sync Activity",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {"expr": "rate(calendar_event_sync_job_active_total[5m])", "legendFormat": "Active", "refId": "A"},
+            {"expr": "rate(calendar_event_sync_job_failed_unknown_total[5m])", "legendFormat": "Failed", "refId": "B"}
+          ]
+        }
+      ]
+    }
