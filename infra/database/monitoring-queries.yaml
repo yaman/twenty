@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: twenty-db-monitoring
+  namespace: twenty
+data:
+  queries: |
+    pg_stat_statements_top:
+      query: |
+        SELECT
+          queryid,
+          substr(query, 1, 100) as query_short,
+          calls,
+          mean_exec_time,
+          total_exec_time,
+          rows,
+          shared_blks_hit,
+          shared_blks_read
+        FROM pg_stat_statements
+        WHERE userid = (SELECT usesysid FROM pg_user WHERE usename = 'twenty')
+        ORDER BY mean_exec_time DESC
+        LIMIT 20
+      metrics:
+        - queryid:
+            usage: "LABEL"
+            description: "Query ID"
+        - query_short:
+            usage: "LABEL"
+            description: "Truncated query text"
+        - calls:
+            usage: "COUNTER"
+            description: "Number of times executed"
+        - mean_exec_time:
+            usage: "GAUGE"
+            description: "Mean execution time in ms"
+        - total_exec_time:
+            usage: "COUNTER"
+            description: "Total execution time in ms"
+        - rows:
+            usage: "COUNTER"
+            description: "Total rows returned"
+        - shared_blks_hit:
+            usage: "COUNTER"
+            description: "Shared buffer hits"
+        - shared_blks_read:
+            usage: "COUNTER"
+            description: "Shared blocks read from disk"
