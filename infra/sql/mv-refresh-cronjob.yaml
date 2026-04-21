@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: twenty-mv-refresh
+  namespace: twenty
+data:
+  refresh.sh: |
+    #!/bin/bash
+    set -e
+
+    echo "=== Materialized View Refresh ==="
+
+    SCHEMAS=$(psql -Atc "SELECT \"dataSourceMetadata\"->'schema' FROM core.\"dataSourceMetadata\" WHERE \"type\" = 'workspace'" | tr -d '"' | grep -v '^$')
+
+    for SCHEMA in $SCHEMAS; do
+      echo "--- Refreshing MVs for $SCHEMA ---"
+
+      # Create MVs if they don't exist, then refresh
+      psql <<EOSQL
+      CREATE MATERIALIZED VIEW IF NOT EXISTS ${SCHEMA}."mv_opportunity_pipeline" AS
+        SELECT
+          stage,
+          COUNT(*) as deal_count,
+          SUM(CAST(amount AS numeric)) as total_value,
+          AVG(CAST(amount AS numeric)) as avg_value
+        FROM ${SCHEMA}."opportunity"
+        WHERE "deletedAt" IS NULL
+        GROUP BY stage;
+
+      CREATE MATERIALIZED VIEW IF NOT EXISTS ${SCHEMA}."mv_company_stats" AS
+        SELECT
+          COUNT(*) as total_companies,
+          COUNT(CASE WHEN "deletedAt" IS NULL THEN 1 END) as active_companies,
+          DATE_TRUNC('month', "createdAt") as month
+        FROM ${SCHEMA}."company"
+        GROUP BY DATE_TRUNC('month', "createdAt");
+
+      REFRESH MATERIALIZED VIEW ${SCHEMA}."mv_opportunity_pipeline";
+      REFRESH MATERIALIZED VIEW ${SCHEMA}."mv_company_stats";
+    EOSQL
+      echo "Done: $SCHEMA"
+    done
+
+    echo "=== MV Refresh Complete ==="
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: twenty-mv-refresh
+  namespace: twenty
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: refresh
+              image: postgres:17-alpine
+              command: ["bash", "/scripts/refresh.sh"]
+              env:
+                - name: PGHOST
+                  value: twenty-db-rw
+                - name: PGPORT
+                  value: "5432"
+                - name: PGDATABASE
+                  value: twenty
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: twenty-db-superuser
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: twenty-db-superuser
+                      key: password
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+          volumes:
+            - name: scripts
+              configMap:
+                name: twenty-mv-refresh
+                defaultMode: 0755
