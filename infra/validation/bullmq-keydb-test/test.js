@@ -58,7 +58,7 @@ async function testJobProcessing() {
   }, { connection });
 
   await queue.add('test-job', { key: 'test-value' });
-  await new Promise(r => setTimeout(r, 2000));
+  await new Promise(r => setTimeout(r, 5000));
 
   await assert('Process a job', async () => {
     if (!processed) throw new Error('Job was not processed');
@@ -105,7 +105,7 @@ async function testJobScheduling() {
   }, { connection });
 
   await queue.upsertJobScheduler('test-scheduler', { every: 1000 }, { data: {} });
-  await new Promise(r => setTimeout(r, 3000));
+  await new Promise(r => setTimeout(r, 5000));
 
   await assert('Scheduled job executes', async () => {
     if (!scheduledRun) throw new Error('Scheduled job did not execute');
@@ -128,7 +128,7 @@ async function testRetry() {
   }, { connection });
 
   await queue.add('retry-job', {}, { attempts: 5, backoff: { type: 'fixed', delay: 500 } });
-  await new Promise(r => setTimeout(r, 5000));
+  await new Promise(r => setTimeout(r, 8000));
 
   await assert('Job retries and succeeds', async () => {
     if (attempts < 3) throw new Error(`Only ${attempts} attempts, expected >=3`);

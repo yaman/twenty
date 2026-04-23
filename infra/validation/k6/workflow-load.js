@@ -31,7 +31,7 @@ export default function () {
     }
   `, { first: 20 });
 
-  const res = http.post(`${BASE_URL}/api`, body, { headers });
+  const res = http.post(`${BASE_URL}/graphql`, body, { headers });
 
   const success = check(res, {
     'status is 200': (r) => r.status === 200,

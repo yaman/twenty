@@ -51,7 +51,7 @@ const QUERIES = {
     query Opportunities($first: Int) {
       opportunities(first: $first) {
         edges {
-          node { id name stage amount }
+          node { id name stage amount { amountMicros currencyCode } }
         }
       }
     }
@@ -64,7 +64,7 @@ export default function () {
   const body = QUERIES[queryName];
 
   const start = Date.now();
-  const res = http.post(`${BASE_URL}/api`, body, { headers });
+  const res = http.post(`${BASE_URL}/graphql`, body, { headers });
   queryDuration.add(Date.now() - start);
 
   const success = check(res, {

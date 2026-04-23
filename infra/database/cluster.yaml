@@ -5,14 +5,12 @@ metadata:
   namespace: twenty
 spec:
   instances: 3
-  imageName: ghcr.io/cloudnative-pg/postgresql:17.4
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.3
 
   storage:
-    storageClass: ""
     size: 20Gi
 
   walStorage:
-    storageClass: ""
     size: 5Gi
 
   postgresql:
@@ -37,6 +35,8 @@ spec:
     initdb:
       database: twenty
       owner: twenty
+      localeCType: en_US.utf8
+      localeCollate: en_US.utf8
       postInitTemplateSQL:
         - CREATE EXTENSION IF NOT EXISTS "pg_stat_statements"
         - CREATE EXTENSION IF NOT EXISTS "pg_trgm"
@@ -63,11 +63,13 @@ spec:
       - name: twenty-db-monitoring
         key: queries
 
-  plugins:
-    - name: barman-cloud.cloudnative-pg.io
-      isWALArchiver: true
-      parameters:
-        barmanObjectName: twenty-backup-store
+  # Barman-cloud backup plugin: enable in production with a configured ObjectStore.
+  # Disabled locally to avoid WAL archiver failures when no object store exists.
+  # plugins:
+  #   - name: barman-cloud.cloudnative-pg.io
+  #     isWALArchiver: true
+  #     parameters:
+  #       barmanObjectName: twenty-backup-store
 
   # Production override: uncomment for GKE Workload Identity
   # serviceAccountTemplate:

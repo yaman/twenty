@@ -57,7 +57,9 @@ teardown() {
   kubectl delete -f "$INFRA_DIR/database/cluster.yaml" --ignore-not-found -n twenty 2>/dev/null || true
   helm uninstall minio -n minio 2>/dev/null || true
   helm uninstall monitoring -n monitoring 2>/dev/null || true
+  kubectl delete -f https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.12.0/manifest.yaml --ignore-not-found 2>/dev/null || true
   helm uninstall cnpg-operator -n cnpg-system 2>/dev/null || true
+  helm uninstall cert-manager -n cert-manager 2>/dev/null || true
   log "Teardown complete."
   exit 0
 }
@@ -88,11 +90,24 @@ kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f 
 # === Wave 0: Operators ===
 log "=== Wave 0: Installing operators ==="
 
+log "Installing cert-manager (required by Barman Cloud Plugin)..."
+helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
+helm repo update jetstack
+helm upgrade --install cert-manager jetstack/cert-manager \
+  -n cert-manager --create-namespace \
+  --set crds.enabled=true \
+  --wait --timeout 5m
+
 log "Installing CloudNativePG operator..."
 helm upgrade --install cnpg-operator cnpg/cloudnative-pg \
   -n cnpg-system \
   -f "$INFRA_DIR/operators/cnpg-values.yaml" \
   --wait --timeout 5m
+
+log "Installing Barman Cloud Plugin..."
+kubectl apply --server-side \
+  -f https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.12.0/manifest.yaml
+kubectl -n cnpg-system wait --for=condition=available deployment/barman-cloud --timeout=120s
 
 log "Installing kube-prometheus-stack..."
 helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
@@ -116,6 +131,9 @@ kubectl create secret generic minio-creds \
   --from-literal=SECRET_ACCESS_KEY=minioadmin123 \
   --dry-run=client -o yaml | kubectl apply -f -
 
+log "Deploying backup ObjectStore (must exist before cluster for Barman Cloud Plugin)..."
+kubectl apply -f "$INFRA_DIR/database/objectstore-local.yaml"
+
 log "Deploying CloudNativePG Cluster..."
 kubectl apply -f "$INFRA_DIR/database/monitoring-queries.yaml"
 kubectl apply -f "$INFRA_DIR/database/cluster.yaml"
@@ -132,8 +150,7 @@ kubectl apply -f "$INFRA_DIR/database/pooler-rw.yaml"
 kubectl apply -f "$INFRA_DIR/database/pooler-ro.yaml"
 sleep 10
 
-log "Deploying backup configuration..."
-kubectl apply -f "$INFRA_DIR/database/objectstore-local.yaml"
+log "Deploying scheduled backup..."
 kubectl apply -f "$INFRA_DIR/database/scheduled-backup.yaml"
 
 log "Deploying KeyDB..."

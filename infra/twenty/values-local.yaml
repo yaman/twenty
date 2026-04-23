@@ -40,13 +40,14 @@ server:
   dockerDataPersistence:
     enabled: false
 
+  # NestJS startup (TypeORM migrations, schema build) needs >1Gi; 1Gi limit leads to OOMKill.
   resources:
     requests:
       cpu: 250m
-      memory: 256Mi
+      memory: 1Gi
     limits:
       cpu: "1"
-      memory: 1Gi
+      memory: 2Gi
 
   env:
     SIGN_IN_PREFILLED: "true"
@@ -56,18 +57,6 @@ server:
       value: "postgres://twenty:$(DB_PASSWORD)@twenty-db-pooler-ro:5432/twenty"
     - name: METER_DRIVER
       value: prometheus
-    - name: STORAGE_TYPE
-      value: "S_3"
-    - name: STORAGE_S3_ENDPOINT
-      value: "http://minio.minio:9000"
-    - name: STORAGE_S3_REGION
-      value: "us-east-1"
-    - name: STORAGE_S3_NAME
-      value: "twenty-files"
-    - name: STORAGE_S3_ACCESS_KEY_ID
-      value: "minioadmin"
-    - name: STORAGE_S3_SECRET_ACCESS_KEY
-      value: "minioadmin123"
 
   ingress:
     enabled: false
@@ -89,19 +78,14 @@ worker:
       value: "postgres://twenty:$(DB_PASSWORD)@twenty-db-pooler-ro:5432/twenty"
     - name: METER_DRIVER
       value: prometheus
-    - name: STORAGE_TYPE
-      value: "S_3"
-    - name: STORAGE_S3_ENDPOINT
-      value: "http://minio.minio:9000"
-    - name: STORAGE_S3_REGION
-      value: "us-east-1"
-    - name: STORAGE_S3_NAME
-      value: "twenty-files"
-    - name: STORAGE_S3_ACCESS_KEY_ID
-      value: "minioadmin"
-    - name: STORAGE_S3_SECRET_ACCESS_KEY
-      value: "minioadmin123"
 
-# Override storage.type to prevent broken Helm helper (checks lowercase "s3")
+# Use s3 to pass Helm schema validation; the helper sets STORAGE_TYPE=s3
+# but the app reads STORAGE_TYPE from TwentyConfigService which maps s3 -> S_3
 storage:
-  type: local
+  type: s3
+  s3:
+    bucket: twenty-files
+    region: us-east-1
+    endpoint: "http://minio.minio:9000"
+    accessKeyId: minioadmin
+    secretAccessKey: minioadmin123

@@ -29,13 +29,13 @@ export default function () {
     }
   `, {
     input: {
-      subject: `Load test message ${Date.now()}`,
-      body: 'This is a load test message for sync simulation.',
-      direction: 'INCOMING',
+      subject: 'Load test message ' + Date.now(),
+      text: 'This is a load test message for sync simulation.',
+      receivedAt: new Date().toISOString(),
     }
   });
 
-  const res = http.post(`${BASE_URL}/api`, body, { headers });
+  const res = http.post(`${BASE_URL}/graphql`, body, { headers });
 
   const success = check(res, {
     'status is 200': (r) => r.status === 200,

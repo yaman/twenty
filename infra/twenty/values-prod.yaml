@@ -50,10 +50,7 @@ server:
       value: "postgres://twenty:$(DB_PASSWORD)@twenty-db-pooler-ro:5432/twenty"
     - name: METER_DRIVER
       value: prometheus
-    - name: STORAGE_TYPE
-      value: "S_3"
-    - name: STORAGE_S3_ENDPOINT
-      value: "storage.googleapis.com"
+    # Region and bucket come from ConfigMap (not supported by Helm storageEnv helper)
     - name: STORAGE_S3_REGION
       valueFrom:
         configMapKeyRef:
@@ -64,16 +61,6 @@ server:
         configMapKeyRef:
           name: twenty-config
           key: GCS_BUCKET
-    - name: STORAGE_S3_ACCESS_KEY_ID
-      valueFrom:
-        secretKeyRef:
-          name: twenty-gcs-hmac
-          key: accessKeyId
-    - name: STORAGE_S3_SECRET_ACCESS_KEY
-      valueFrom:
-        secretKeyRef:
-          name: twenty-gcs-hmac
-          key: secretAccessKey
 
   ingress:
     enabled: true
@@ -106,10 +93,6 @@ worker:
       value: "postgres://twenty:$(DB_PASSWORD)@twenty-db-pooler-ro:5432/twenty"
     - name: METER_DRIVER
       value: prometheus
-    - name: STORAGE_TYPE
-      value: "S_3"
-    - name: STORAGE_S3_ENDPOINT
-      value: "storage.googleapis.com"
     - name: STORAGE_S3_REGION
       valueFrom:
         configMapKeyRef:
@@ -120,16 +103,22 @@ worker:
         configMapKeyRef:
           name: twenty-config
           key: GCS_BUCKET
-    - name: STORAGE_S3_ACCESS_KEY_ID
-      valueFrom:
-        secretKeyRef:
-          name: twenty-gcs-hmac
-          key: accessKeyId
-    - name: STORAGE_S3_SECRET_ACCESS_KEY
-      valueFrom:
-        secretKeyRef:
-          name: twenty-gcs-hmac
-          key: secretAccessKey
 
+# storage.type=s3 sets STORAGE_TYPE=s3 env var; TwentyConfigService @CastToUpperSnakeCase maps it to S_3
+# Endpoint and credentials handled by Helm storageEnv helper
+# Region and bucket in extraEnv above (come from ConfigMap, not supported by helper)
+# storage.type=s3 sets STORAGE_TYPE=s3 env var; TwentyConfigService @CastToUpperSnakeCase maps it to S_3
+# Endpoint handled by Helm storageEnv helper
+# Credentials from K8s secret via secretName/keys (overrides the placeholder values below)
+# Region and bucket overridden by extraEnv ConfigMap refs above
 storage:
-  type: local
+  type: s3
+  s3:
+    endpoint: "https://storage.googleapis.com"
+    bucket: ""
+    region: ""
+    secretName: twenty-gcs-hmac
+    accessKeyIdKey: accessKeyId
+    secretAccessKeyKey: secretAccessKey
+    accessKeyId: "placeholder-overridden-by-secret"
+    secretAccessKey: "placeholder-overridden-by-secret"

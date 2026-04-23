@@ -47,7 +47,7 @@ spec:
               mountPath: /data
       containers:
         - name: keydb
-          image: eqalpha/keydb:6.3.4
+          image: eqalpha/keydb:latest
           command:
             - keydb-server
             - /data/keydb.conf

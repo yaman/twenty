@@ -51,7 +51,7 @@ data:
     psql -f /sql/core-optimizations.sql 2>&1 || echo "WARN: Some core optimizations may have failed (non-fatal)"
 
     echo "--- Discovering workspace schemas ---"
-    SCHEMAS=$(psql -Atc "SELECT \"databaseSchema\" FROM core.\"workspace\" WHERE \"databaseSchema\" IS NOT NULL" | grep -v '^$')
+    SCHEMAS=$(psql -Atc "SELECT \"databaseSchema\" FROM core.\"workspace\" WHERE \"databaseSchema\" IS NOT NULL" | grep -v '^$' || true)
 
     if [ -z "$SCHEMAS" ]; then
       echo "No workspace schemas found. Skipping workspace optimizations."
