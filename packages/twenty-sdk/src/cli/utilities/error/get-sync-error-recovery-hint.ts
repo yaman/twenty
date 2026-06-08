@@ -1,28 +1,22 @@
-import { isObject, isString } from '@sniptt/guards';
+import { isString } from '@sniptt/guards';
+import { isPlainObject } from 'twenty-shared/utils';
+
+import { getGraphQLErrorCode } from '@/cli/utilities/error/parse-server-error';
+
+type ErrorWithMessage = {
+  message?: string;
+};
 
 const getErrorMessage = (error: unknown): string => {
   if (isString(error)) {
     return error;
   }
 
-  if (isObject(error)) {
-    const message = (error as { message?: unknown }).message;
+  if (isPlainObject(error)) {
+    const { message } = error as ErrorWithMessage;
 
     if (isString(message)) {
       return message;
-    }
-  }
-
-  return '';
-};
-
-const getErrorCode = (error: unknown): string => {
-  if (isObject(error)) {
-    const extensions = (error as { extensions?: { code?: unknown } })
-      .extensions;
-
-    if (isObject(extensions) && isString(extensions.code)) {
-      return extensions.code;
     }
   }
 
@@ -35,7 +29,7 @@ export const getSyncErrorRecoveryHint = (
   error: unknown,
 ): string | undefined => {
   const message = getErrorMessage(error).toLowerCase();
-  const code = getErrorCode(error);
+  const code = getGraphQLErrorCode(error) ?? '';
 
   if (code === 'APP_NOT_INSTALLED' || message.includes('not installed')) {
     return 'Hint: run `yarn twenty dev --once` to register the app in this workspace, then retry.';
